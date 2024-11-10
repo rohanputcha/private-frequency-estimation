@@ -1,23 +1,29 @@
-import hashlib
 import numpy as np
-import xxhash
+import random
+import sympy
+
+MIN_PRIME = 2**10
+MAX_PRIME = 2**18
 
 class CountMinSketch:
     def __init__(self, width, depth, seed=None):
         self.width = width # w
         self.depth = depth # d
         self.table = np.zeros((depth, width), dtype=int)
+        self.primes = list(sympy.primerange(MIN_PRIME, MAX_PRIME))
         self.hashes = self._create_hash_functions(depth, seed)
 
     def _create_hash_functions(self, num_hashes, seed):
         hashes = []
         seed = np.random.randint(0, 2**32) if seed is None else seed
+        random.seed(seed)
         for i in range(num_hashes):
             new_seed = seed + i
-            def hash_function(x, seed=new_seed):
-                byte_length = (x.bit_length() + 7) // 8 or 1
-                byte_rep = x.to_bytes(byte_length, byteorder='big', signed=True)
-                return xxhash.xxh32(byte_rep, seed=seed).intdigest() % self.width
+            p = random.choice(self.primes)
+            a = random.randint(1, p - 1)
+            b = random.randint(0, p - 1)
+            def hash_function(x, p=p, a=a, b=b):
+                return ((a * x + b) % p) % self.width
             hashes.append(hash_function)
         return hashes
 
