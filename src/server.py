@@ -13,7 +13,8 @@ DEPTH = 20
 SEED = 598
 
 class Server:
-    def __init__(self):
+    def __init__(self, ldp=False):
+        self.ldp = ldp
         self.aggregated_cms = CountMinSketch(WIDTH, DEPTH, SEED)
 
     def aggregate_data(self, table):
@@ -73,14 +74,41 @@ class Server:
         plt.hist(items, bins=200)
         plt.xlabel("Value")
         plt.ylabel("Frequency")
-        plt.title("Histogram of CMS")
-        plt.savefig("../output/histogram_cms.png")
+        if self.ldp:
+            plt.title("Histogram of CMS with LDP")
+            plt.savefig("../output/histogram_cms_ldp.png")
+        else:
+            plt.title("Histogram of CMS")
+            plt.savefig("../output/histogram_cms.png")
+
+            self.add_noise()
+
+            items = []
+            for i in range(-40, 41):
+                heapq.heappush(top_k, (self.query(i), i))
+                items.extend([i] * self.query(i))
+            
+            plt.clf()
+            plt.hist(items, bins=200)
+            plt.xlabel("Value")
+            plt.ylabel("Frequency")
+            plt.title("Histogram of CMS with CDP")
+            plt.savefig("../output/histogram_cms_cdp.png")
+
         top_k = heapq.nlargest(k, top_k)
         print("Heavy Hitters:")
         for value, item in top_k:
             print(f"{item}: {value}")
         return top_k
+    
+    def add_noise(self):
+        # add Gaussian noise to each entry in CMS
+        variance = 20
+        noise_mat = np.random.normal(0, variance, size=self.aggregated_cms.table.shape)
+        self.aggregated_cms.table = self.aggregated_cms.table.astype(float) + noise_mat
+        self.aggregated_cms.table = np.rint(self.aggregated_cms.table).astype(int)  # round and convert back to int
+
 
 if __name__ == "__main__":
-    server = Server()
+    server = Server(ldp=True)
     server.run()
