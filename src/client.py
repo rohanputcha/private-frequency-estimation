@@ -3,15 +3,19 @@ import pickle
 import logging
 import sys
 from countMinSketch import CountMinSketch
+import numpy as np
 
 SERVER_HOST = '127.0.0.1'
 SERVER_PORT = 65432
-WIDTH = 100
-DEPTH = 20
+WIDTH = 50
+DEPTH = 10
+VARIANCE = 3.86
 SEED = 598
+LDP = False
 
 class Client:
-    def __init__(self, client_port):
+    def __init__(self, client_port, ldp=False):
+        self.ldp = ldp
         self.cms = CountMinSketch(WIDTH, DEPTH, SEED)
         self.client_port = client_port
         self.partition_file = f"../data/partitioned/gaussian_samples_part_{client_port - 5000}.txt"
@@ -32,6 +36,9 @@ class Client:
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             s.bind(('', self.client_port))
             s.connect((SERVER_HOST, SERVER_PORT))
+
+            if self.ldp:
+                self.add_noise()
             
             serialized_table = pickle.dumps(self.cms.table)
             data_length = len(serialized_table)
@@ -47,11 +54,18 @@ class Client:
         self.load_data_from_partition()
         self.send_data()
 
+    def add_noise(self):
+        # add Gaussian noise to each entry in CMS
+        variance = VARIANCE
+        noise_mat = np.random.normal(0, variance, size=self.cms.table.shape)
+        self.cms.table = self.cms.table.astype(float) + noise_mat
+        self.cms.table = np.rint(self.cms.table).astype(int)  # round and convert back to int
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python client.py <client_port>")
         sys.exit(1)
     
     client_port = int(sys.argv[1])
-    client = Client(client_port)
+    client = Client(client_port, ldp=LDP)
     client.run()
