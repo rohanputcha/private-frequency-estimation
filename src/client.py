@@ -7,9 +7,11 @@ import numpy as np
 
 SERVER_HOST = '127.0.0.1'
 SERVER_PORT = 65432
-WIDTH = 100
-DEPTH = 20
+WIDTH = 50
+DEPTH = 10
+VARIANCE = 3.86
 SEED = 598
+LDP = False
 
 class Client:
     def __init__(self, client_port, ldp=False):
@@ -54,7 +56,7 @@ class Client:
 
     def add_noise(self):
         # add Gaussian noise to each entry in CMS
-        variance = 20
+        variance = VARIANCE
         noise_mat = np.random.normal(0, variance, size=self.cms.table.shape)
         self.cms.table = self.cms.table.astype(float) + noise_mat
         self.cms.table = np.rint(self.cms.table).astype(int)  # round and convert back to int
@@ -65,5 +67,5 @@ if __name__ == "__main__":
         sys.exit(1)
     
     client_port = int(sys.argv[1])
-    client = Client(client_port, ldp=True)
+    client = Client(client_port, ldp=LDP)
     client.run()
